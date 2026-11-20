@@ -1,0 +1,7 @@
+{
+  "events": [
+    {"id": "E5", "cabinet_id": "CAB-A", "cell_id": "CAB-A-03", "event_type": "drop", "event_ts": "2026-11-19T02:00:00Z", "tracking_no": "TN1003", "payload": {"size": "M", "note": "邻格正常投柜"}},
+    {"id": "E6", "cabinet_id": "CAB-A", "cell_id": "CAB-A-02", "event_type": "drop", "event_ts": "2026-11-19T02:05:00Z", "tracking_no": "TN1009", "payload": {"size": "M", "note": "同格二次投柜-应整组搁置"}},
+    {"id": "E7", "cabinet_id": "CAB-A", "cell_id": "CAB-A-04", "event_type": "drop", "event_ts": "2026-11-19T02:10:00Z", "tracking_no": "TN1004", "payload": {"size": "L", "note": "空闲大格正常投柜"}}
+  ]
+}
