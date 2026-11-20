@@ -148,6 +148,22 @@ h1 { margin: 0 0 .35rem; font-size: 1.35rem; font-weight: 600; }
 .cell.free .dot { background: var(--free); box-shadow: 0 0 8px rgba(61,155,122,.6); }
 .cell.occupied .dot { background: var(--busy); box-shadow: 0 0 8px rgba(217,119,87,.55); }
 
+.badge {
+  align-self: flex-start;
+  margin-top: .2rem;
+  padding: .12rem .4rem;
+  font-size: .7rem;
+  font-family: var(--mono);
+  border-radius: 999px;
+  border: 1px solid rgba(240, 196, 63, .5);
+  background: rgba(240, 196, 63, .12);
+  color: var(--signal);
+}
+.badge.bad { border-color: var(--over); background: rgba(196, 92, 106, .18); color: var(--over); }
+
+.warn { color: var(--over); font-size: .88rem; margin: .35rem 0; }
+.ok-text { color: var(--free); font-size: .88rem; margin: .2rem 0; }
+
 button, .btn {
   font: inherit;
   cursor: pointer;

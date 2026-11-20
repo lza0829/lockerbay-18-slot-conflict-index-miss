@@ -1,3 +1,6 @@
+from app.modules import slot_conflict_index as slot_idx
+
+
 def overview(conn):
     return {
         "cabinets": conn.execute("SELECT COUNT(*) AS c FROM cabinets").fetchone()["c"],
@@ -6,6 +9,7 @@ def overview(conn):
         "free": conn.execute("SELECT COUNT(*) AS c FROM cells WHERE status='free'").fetchone()["c"],
         "events": conn.execute("SELECT COUNT(*) AS c FROM parcel_events").fetchone()["c"],
         "quarantine": conn.execute("SELECT COUNT(*) AS c FROM quarantine").fetchone()["c"],
+        "slot_conflicts": conn.execute("SELECT COUNT(*) AS c FROM slot_conflicts").fetchone()["c"],
         "open_occupancies": conn.execute(
             "SELECT COUNT(*) AS c FROM occupancies WHERE status='occupied'"
         ).fetchone()["c"],
@@ -29,8 +33,29 @@ def cabinet_matrix(conn):
                 (cell["id"],),
             ).fetchone()
             cell["occupancy"] = dict(occ) if occ else None
+            # 冲突角标与反查接口同源：直接读 slot_conflict_index。
+            cell["conflict"] = _cell_conflict_badge(conn, cell["id"])
         out.append({**cab, "cells": cells})
     return out
+
+
+def _cell_conflict_badge(conn, cell_id):
+    """格口冲突角标：行数与最新冲突 id 取自 slot_conflict_index，与反查同源。"""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n, MAX(conflict_id) AS latest FROM slot_conflict_index WHERE cell_id=?",
+        (cell_id,),
+    ).fetchone()
+    n = row["n"] or 0
+    if not n:
+        return {"count": 0, "latest_conflict_id": None}
+    # 索引行在而反查不通过 → 角标显式标记不一致，不静默吞掉。
+    verdict = slot_idx.verify(conn, cell_id)
+    return {
+        "count": n,
+        "latest_conflict_id": row["latest"],
+        "ok": verdict["ok"],
+        "issue_codes": [i["code"] for i in verdict["issues"]],
+    }
 
 
 def _field_alias_view(payload: dict) -> dict:

@@ -82,7 +82,7 @@ def occupancy_proofs():
 
 @router.get("/slot-conflicts")
 def slot_conflicts():
-    """槽位冲突核证（只读）：双事件 id + 格口 + 先占占用 id。"""
+    """槽位冲突核证（只读）：双事件 id + 格口 + 先占占用 id，带反查索引落点。"""
     conn = connect()
     try:
         return ddc.list_conflicts(conn)
@@ -90,9 +90,32 @@ def slot_conflicts():
         conn.close()
 
 
+@router.get("/slot-conflicts/verify")
+def slot_conflicts_verify(cell_id: str | None = None):
+    """只读核证（新增）：正查搁置与格口反查索引互逆，缺行/缺后到事件/串格即不 ok。"""
+    conn = connect()
+    try:
+        return ddc.verify_index(conn, cell_id)
+    finally:
+        conn.close()
+
+
+@router.get("/slot-conflicts/{conflict_id}/index")
+def slot_conflict_index_of(conflict_id: int):
+    """只读核证（新增）：冲突行 → 格口反查索引（正查反打，与反查互逆）。"""
+    conn = connect()
+    try:
+        out = ddc.conflict_index_verdict(conn, conflict_id)
+        if out.get("issues") and out["issues"][0]["code"] == "missing_conflict":
+            raise HTTPException(404, "冲突记录不存在")
+        return out
+    finally:
+        conn.close()
+
+
 @router.get("/slot-conflicts/{conflict_id}")
 def slot_conflict_detail(conflict_id: int):
-    """槽位冲突核证（只读）：整组载荷回看，先占事件与冲突 drop 同组。"""
+    """槽位冲突核证（只读）：整组载荷回看，先占事件与冲突 drop 同组，附反查索引。"""
     conn = connect()
     try:
         out = ddc.get_conflict(conn, conflict_id)
@@ -133,14 +156,31 @@ def put_overdue(body: dict = Body(...)):
     finally:
         conn.close()
 
-# --- plant routes ---
+# --- 格口冲突反查（格阵下钻 + 核证页同源） ---
 from app.modules import slot_conflict_index as slot_idx
 
 @router.get("/conflict-index/{cell_id}")
 def conflict_index(cell_id: str):
+    """按格口反查冲突组（只读）：命中含双方事件 id + 搁置键 + 整组载荷。
+
+    格口不存在 → 404；存在但无冲突 → 200 空命中。挂错格口/缺行时 ok=false 且
+    issues 明列，核证页与格阵角标读同一结论。
+    """
     conn = connect()
     try:
+        if conn.execute("SELECT 1 FROM cells WHERE id=?", (cell_id,)).fetchone() is None:
+            raise HTTPException(404, "格口不存在")
         return slot_idx.lookup_by_cell(conn, cell_id)
+    finally:
+        conn.close()
+
+
+@router.get("/conflict-index")
+def conflict_index_all():
+    """只读核证（新增）：全库正查搁置 ↔ 格口反查索引互逆。"""
+    conn = connect()
+    try:
+        return slot_idx.verify(conn)
     finally:
         conn.close()
 

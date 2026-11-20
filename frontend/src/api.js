@@ -17,9 +17,12 @@ export const api = {
   proofs: () => req('/api/occupancy-proofs'),
   slotConflicts: () => req('/api/slot-conflicts'),
   slotConflict: (id) => req(`/api/slot-conflicts/${id}`),
+  slotConflictIndex: (id) => req(`/api/slot-conflicts/${id}/index`),
+  conflictVerify: (cellId) => req('/api/slot-conflicts/verify' + (cellId ? `?cell_id=${encodeURIComponent(cellId)}` : '')),
   settings: () => req('/api/settings'),
   setOverdue: (overdue_hours) =>
     req('/api/settings/overdue-hours', { method: 'PUT', body: JSON.stringify({ overdue_hours }) }),
   ingest: () => req('/api/ingest/run', { method: 'POST', body: '{}' }),
   conflictIndex: (cellId) => req(`/api/conflict-index/${cellId}`),
+  conflictIndexAll: () => req('/api/conflict-index'),
 }

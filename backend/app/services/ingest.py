@@ -6,6 +6,25 @@ from app.db import FIXTURES_DIR, connect
 from app.modules import dual_drop_conflict as ddc
 
 
+def _shelve_atomic(conn, ev, occ, now):
+    """冲突分流：冲突行 + 搁置行 + 格口反查索引同 savepoint；缺一行整组回滚。"""
+    # 先显式开事务，避免最外层 SAVEPOINT 的 RELEASE 提前落盘。
+    if not conn.in_transaction:
+        conn.execute("BEGIN")
+    conn.execute("SAVEPOINT slot_conflict_shelve")
+    try:
+        conflict_id = ddc.shelve_conflict(conn, ev, occ, now)
+        verdict = ddc.conflict_index_verdict(conn, conflict_id)
+        if not verdict["ok"]:
+            raise RuntimeError(f"冲突反查未接通: {verdict['issues']}")
+        conn.execute("RELEASE slot_conflict_shelve")
+        return conflict_id
+    except Exception:
+        conn.execute("ROLLBACK TO slot_conflict_shelve")
+        conn.execute("RELEASE slot_conflict_shelve")
+        raise
+
+
 def run_batch():
     path = FIXTURES_DIR / "ingest_batch.json"
     if not path.exists():
@@ -28,7 +47,7 @@ def run_batch():
                 # 不开第二条占用，也不改写既有占用的 tracking_no/opened_at。
                 occ = ddc.find_open_occupancy(conn, ev["cell_id"])
                 if occ:
-                    ddc.shelve_conflict(conn, ev, occ, now)
+                    _shelve_atomic(conn, ev, occ, now)
                     conflicts += 1
                     continue
             cur = conn.execute(

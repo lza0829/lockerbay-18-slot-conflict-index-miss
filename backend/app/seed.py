@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.db import FIXTURES_DIR, connect
 from app.modules import dual_drop_conflict
+from app.modules import slot_conflict_index
 
 SCHEMA = (
     """
@@ -87,6 +88,8 @@ def init_db():
         conn.execute("INSERT INTO settings(key, value) VALUES ('overdue_hours', '48')")
     if conn.execute("SELECT COUNT(*) AS c FROM cabinets").fetchone()["c"] == 0:
         _seed(conn)
+    # 老库迁移：既有冲突行补建格口反查索引，避免升级后「搁置成功而反查缺行」。
+    slot_conflict_index.backfill(conn)
     conn.commit()
     conn.close()
 
